@@ -46,24 +46,35 @@ except:
     HAVE_MUTAGEN = False
 
 
-def have_ff(scmd: str) -> bool:
-    if ANYWIN:
+def have_ff(name: str) -> bytes:
+    uname = name.upper()
+    if os.environ.get("PRTY_NO_" + uname):
+        return b""
+
+    ebin = os.environ.get("PRTY_%s_BIN" % (uname,))
+    try:
+        scmd = (ebin or name).decode("utf-8")
+    except:
+        scmd: str = ebin or name
+
+    if ANYWIN and not ebin:
         scmd += ".exe"
 
     if PY2:
-        print("# checking {}".format(scmd))
-        acmd = (scmd + " -version").encode("ascii").split(b" ")
+        print("# checking %s" % (scmd,))
+        bcmd = scmd.encode("utf-8")
         try:
-            sp.Popen(acmd, stdout=sp.PIPE, stderr=sp.PIPE).communicate()
-            return True
+            sp.Popen([bcmd, b"-version"], stdout=sp.PIPE, stderr=sp.PIPE).communicate()
+            return bcmd
         except:
-            return False
+            return b""
     else:
-        return bool(shutil.which(scmd))
+        return (shutil.which(scmd) or "").encode("utf-8")
 
 
-HAVE_FFMPEG = not os.environ.get("PRTY_NO_FFMPEG") and have_ff("ffmpeg")
-HAVE_FFPROBE = not os.environ.get("PRTY_NO_FFPROBE") and have_ff("ffprobe")
+HAVE_FFMPEG = have_ff("ffmpeg")
+HAVE_FFPROBE = have_ff("ffprobe")
+TH_BWRAP = []
 
 CBZ_PICS = set("png jpg jpeg gif bmp tga tif tiff webp avif jxl".split())
 CBZ_01 = re.compile(r"(^|[^0-9v])0+[01]\b")
@@ -214,17 +225,28 @@ def au_unpk(
         return abspath
 
 
+def bwrap(prog: bytes, ap_in: bytes, ap_out: bytes) -> list[bytes]:
+    if not TH_BWRAP:
+        return [prog]
+    ret = TH_BWRAP + [b"--ro-bind", prog, prog, b"--ro-bind", ap_in, ap_in]
+    if ap_out:
+        zs = ap_out.rsplit(b"/", 1)[0]
+        ret += [b"--bind", zs, zs]
+    ret.append(prog)
+    return ret
+
+
 def ffprobe(
     abspath: str, timeout: int = 60
 ) -> tuple[dict[str, tuple[int, Any]], dict[str, list[Any]], list[Any], dict[str, Any]]:
     # ffprobe -hide_banner -show_streams -show_format --
-    cmd = [
-        b"ffprobe",
+    bap = fsenc(abspath)
+    cmd = bwrap(HAVE_FFPROBE, bap, b"") + [
         b"-hide_banner",
         b"-show_streams",
         b"-show_format",
         b"--",
-        fsenc(abspath),
+        bap,
     ]
     rc, so, se = runcmd(cmd, timeout=timeout, nice=True, oom=200)
     retchk(rc, cmd, se)

@@ -1,9 +1,13 @@
 #!/bin/ash
 set -e
 
+AVER=3.24
+
 [ $1 = 1 ] && hub=1
 
 uname -a
+apk update
+apk upgrade -al
 apk add alpine-sdk doas wget
 echo permit nopass root > /etc/doas.d/u.conf
 cp -pv /root/.abuild/*.pub /etc/apk/keys/ || abuild-keygen -ina
@@ -13,7 +17,7 @@ cp -pv /root/.abuild/*.pub /etc/apk/keys/ || abuild-keygen -ina
 
 mkdir /ffmpeg
 cd /ffmpeg
-base=https://github.com/alpinelinux/aports/raw/refs/heads/3.23-stable/community/ffmpeg/
+base=https://github.com/alpinelinux/aports/raw/refs/heads/$AVER-stable/community/ffmpeg/
 wget ${base}APKBUILD
 awk <APKBUILD -vb="$base" '/"/{o=0}/^source=/{o=1;next}o{print b $1}' | wget -i-
 cp -pv APKBUILD /root/
@@ -29,16 +33,23 @@ prepare() {
     default_prepare
     tar -cC/opt/patch/ffmpeg . | tar -x
     patch -p1 <aac-lc-only.patch
+
+    awk >t <libavcodec/aac/aacdec_tab.c '/^[^ \t]/{o=0} /^(static|const).*( sbr_|_hcod)/{o=1} !o{print;next} {gsub(/\{ *-?[0-9]+, *-?[0-9]+ *\}/, "{ 1, 1 }")}1'
+    mv t libavcodec/aac/aacdec_tab.c
+
+    # invent the missing disable-option for this crap
+    sed -ri 's/(^v4l2_m2m_deps=")/\1videotoolbox /' configure
 }
 EOF
 
 ##
 ## shrink-ray
 
-sed -ri 's/--enable-lib(bluray|placebo|rav1e|shaderc)/--disable-lib\1/; s/--enable-(vdpau)/--disable-\1/; s/\b(rav1e|shaderc)-dev//; s/\blib(bluray|placebo|vdpau|xfixes)-dev\b//' APKBUILD
+sed -ri 's/--enable-lib(bluray|dvdnav|dvdread|placebo|rav1e|shaderc)/--disable-lib\1/; s/--enable-(vdpau)/--disable-\1/; s/\b(rav1e|shaderc)-dev//; s/\blib(bluray|placebo|vdpau|xfixes)-dev\b//' APKBUILD
 # `- rm placebo+shaderc to drop spirv-tools (1.7 MiB apk)
 
-sed -ri 's/--enable-libxcb/--disable-libxcb --disable-indev=xcbgrab --disable-ffplay --disable-encoder=opus /' APKBUILD
+sed -ri 's/--enable-libxcb/--disable-libxcb --disable-indev=xcbgrab --disable-ffplay --disable-encoder=opus --disable-decoder=metasound --disable-decoder=twinvq/' APKBUILD
+# `- metasound+twinvq = +450 KiB apk
 sed -ri 's/\bffplay$//; s/\bsdl2-dev\b//' APKBUILD
 
 ##
@@ -48,9 +59,11 @@ sed -ri 's/\bffplay$//; s/\bsdl2-dev\b//' APKBUILD
 sed -ri 's/--enable-(ladspa|lv2|vaapi|vulkan)/--disable-\1/' APKBUILD
 sed -ri 's/--enable-lib(aom|ass|drm|fontconfig|freetype|fribidi|harfbuzz|pulse|rist|srt|ssh|v4l2|vidstab|x264|xvid|zimg|vpl)/--disable-lib\1/' APKBUILD
 sed -ri 's/\b(v4l-utils|libvpx)-dev\b//' APKBUILD  # (try to) drop v4l2_m2m, and use builtin vp8/vp9 instead of libvpx for decode
-sed -ri 's/(--disable-vulkan)/\1 --disable-devices --disable-hwaccels --disable-encoders --enable-encoder=flac --enable-encoder=libjxl --enable-encoder=libmp3lame --enable-encoder=libopus --enable-encoder=libwebp --enable-encoder=mjpeg --enable-encoder=pcm_s16le --enable-encoder=pcm_s16le_planar --enable-encoder=png --enable-encoder=rawvideo --enable-encoder=vnull --enable-encoder=wrapped_avframe --disable-muxers --enable-muxer=aiff --enable-muxer=apng --enable-muxer=caf --enable-muxer=ffmetadata --enable-muxer=fifo --enable-muxer=flac --enable-muxer=image2 --enable-muxer=image2pipe --enable-muxer=matroska --enable-muxer=matroska_audio --enable-muxer=mjpeg --enable-muxer=mp3 --enable-muxer=null --enable-muxer=opus --enable-muxer=pcm_s16le --enable-muxer=wav --enable-muxer=webm --enable-muxer=webp --enable-muxer=yuv4mpegpipe --disable-filters --enable-filter=anoisesrc --enable-filter=asplit --enable-filter=amerge --enable-filter=amix --enable-filter=aresample --enable-filter=crop --enable-filter=showspectrumpic --enable-filter=showwavespic --enable-filter=convolution --enable-filter=volume --enable-filter=compand --enable-filter=setsar --enable-filter=scale       --disable-decoder=av1 --disable-hwaccel=v4l2_m2m --disable-decoder=h263_v4l2m2m --disable-decoder=h264_v4l2m2m --disable-decoder=mpeg1_v4l2m2m --disable-decoder=mpeg2_v4l2m2m --disable-decoder=mpeg4_v4l2m2m --disable-decoder=vc1_v4l2m2m --disable-decoder=vp8_v4l2m2m --disable-decoder=vp9_v4l2m2m --disable-decoder=subrip --disable-decoder=srt --disable-decoder=pgssub --disable-decoder=cc_dec --disable-decoder=dvdsub --disable-decoder=dvbsub --disable-decoder=ssa --disable-decoder=ass --disable-decoder=opus /' APKBUILD
+sed -ri 's/(--disable-vulkan)/\1 --disable-devices --disable-hwaccels --disable-encoders --enable-encoder=flac --enable-encoder=libjxl --enable-encoder=libmp3lame --enable-encoder=libopus --enable-encoder=libwebp --enable-encoder=mjpeg --enable-encoder=pcm_f32le --enable-encoder=pcm_s16le --enable-encoder=pcm_s16le_planar --enable-encoder=png --enable-encoder=rawvideo --enable-encoder=vnull --enable-encoder=wrapped_avframe --disable-muxers --enable-muxer=aiff --enable-muxer=apng --enable-muxer=caf --enable-muxer=ffmetadata --enable-muxer=fifo --enable-muxer=flac --enable-muxer=image2 --enable-muxer=image2pipe --enable-muxer=matroska --enable-muxer=matroska_audio --enable-muxer=mjpeg --enable-muxer=mp3 --enable-muxer=null --enable-muxer=opus --enable-muxer=pcm_f32le --enable-muxer=pcm_s16le --enable-muxer=wav --enable-muxer=webm --enable-muxer=webp --enable-muxer=yuv4mpegpipe --disable-filters --enable-filter=anoisesrc --enable-filter=asplit --enable-filter=amerge --enable-filter=amix --enable-filter=aresample --enable-filter=crop --enable-filter=showspectrumpic --enable-filter=showwavespic --enable-filter=convolution --enable-filter=volume --enable-filter=compand --enable-filter=setsar --enable-filter=scale       --disable-decoder=av1 --disable-hwaccel=v4l2_m2m --disable-decoder=h263_v4l2m2m --disable-decoder=h264_v4l2m2m --disable-decoder=mpeg1_v4l2m2m --disable-decoder=mpeg2_v4l2m2m --disable-decoder=mpeg4_v4l2m2m --disable-decoder=vc1_v4l2m2m --disable-decoder=vp8_v4l2m2m --disable-decoder=vp9_v4l2m2m --disable-decoder=subrip --disable-decoder=srt --disable-decoder=pgssub --disable-decoder=cc_dec --disable-decoder=dvdsub --disable-decoder=dvbsub --disable-decoder=ssa --disable-decoder=ass --disable-decoder=opus /' APKBUILD
 # `- s/av1/libdav1d/; s/libvorbis/vorbis/; s/opus/libopus/; libvorbis and mpg123 gets pulled in by openmpt 
 }
+
+[ $1 -gt 1 ] && sed -ri 's/(--disable-libxcb )/\1--disable-doc --disable-htmlpages --disable-manpages --disable-podpages --disable-txtpages /' APKBUILD
 
 p=/root/packages/$(abuild -A)
 rm -rf $p
@@ -59,6 +72,7 @@ abuild -FrcK
 mkdir $p/ex
 mv $p/ffmpeg-d* $p/ex  # dbg,dev,doc
 cp -pv src/ffmpeg-*/ffbuild/config.log $p/
+#tar -cz src > $p/.tar
 
 [ $hub ] && rm -rf $p.hub && mv $p $p.hub
 

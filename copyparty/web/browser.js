@@ -1701,7 +1701,7 @@ mpl.init_ac2();
 var re_m3u = /\.(m3u8?)$/i;
 var re_au_native = (can_ogg || have_acode) ? /\.(aac|flac|m4[abr]|mp3|oga|ogg|opus|wav)$/i : /\.(aac|flac|m4[abr]|mp3|wav)$/i,
 	re_au_vid = /\.(3gp|asf|avi|flv|m4v|mkv|mov|mp4|mpeg|mpeg2|mpegts|mpg|mpg2|nut|ogm|ogv|rm|ts|vob|webm|wmv)$/i,
-	re_au_all = /\.(aac|ac3|aif|aiff|alac|alaw|amr|ape|au|b[cfr]stm|dfpwm|dts|flac|gsm|it|itgz|itxz|itz|m4[abr]|mdgz|mdxz|mdz|mo3|mod|mp2|mp3|mpc|mptm|mt2|mulaw|oga|ogg|okt|opus|ra|s3m|s3gz|s3xz|s3z|tak|tta|ulaw|wav|wma|wv|xm|xmgz|xmxz|xmz|xpk|3gp|asf|avi|flv|m4v|mkv|mov|mp4|mpeg|mpeg2|mpegts|mpg|mpg2|nut|ogm|ogv|rm|ts|vob|webm|wmv)$/i;
+	re_au_all = /\.(aac|ac3|aif|aiff|alac|alaw|amr|ape|au|b[cfr]stm|dfpwm|dts|flac|gsm|it|itgz|itxz|itz|m4[abr]|mdgz|mdxz|mdz|mka|mo3|mod|mp2|mp3|mpc|mptm|mt2|mulaw|oga|ogg|okt|opus|ra|s3m|s3gz|s3xz|s3z|tak|tta|ulaw|wav|wma|wv|xm|xmgz|xmxz|xmz|xpk|3gp|asf|avi|flv|m4v|mkv|mov|mp4|mpeg|mpeg2|mpegts|mpg|mpg2|nut|ogm|ogv|rm|ts|vob|webm|wmv)$/i;
 
 
 // extract songs + add play column
@@ -3760,7 +3760,7 @@ function sortfiles(nodes) {
 					if ((v + '').indexOf('<a ') === 0)
 						v = v.split('>')[1];
 					else if (name == "href" && v)
-						v = uricom_dec(v);
+						v = uri2txt(v, true);
 
 					nodes[b]._sv = v
 				}
@@ -4145,6 +4145,8 @@ var fileman = (function () {
 			if (this.textContent == 'write-only')
 				for (var a = 0; a < pbtns.length; a++)
 					clmod(pbtns[a], 'on', pbtns[a].textContent == 'write');
+			if (this.textContent == 'get' && clgot(this, 'on') && has(perms, 'read'))
+				clmod(pbtns[0], 'on');
 		}
 		clmod(pbtns[0], 'on', 1);
 
@@ -7871,7 +7873,7 @@ var treectl = (function () {
 		delete res['a'];
 		var keys = Object.keys(res);
 		for (var a = 0; a < keys.length; a++)
-			keys[a] = [uricom_dec(keys[a]), keys[a]];
+			keys[a] = [uri2txt(keys[a]), keys[a]];
 
 		if (ENATSORT)
 			keys.sort(function (a, b) { return NATSORT.compare(a[0], b[0]); });
@@ -8033,12 +8035,17 @@ function apply_perms(res) {
 	a.style.display = '';
 	tt.att(QS('#ops'));
 
+	var v_perms = perms.slice(0);
+	var have_read = has(perms, 'read');
+	if (have_read)
+		apop(v_perms, 'get');
+
 	for (var a = 0; a < chk.length; a++)
-		if (has(perms, chk[a]))
+		if (has(v_perms, chk[a]))
 			axs.push(chk[a].slice(0, 1).toUpperCase() + chk[a].slice(1));
 
 	axs = axs.join('-');
-	if (perms.length == 1) {
+	if (v_perms.length == 1) {
 		aclass = ' class="warn">';
 		axs += '-Only';
 	}
@@ -8080,7 +8087,6 @@ function apply_perms(res) {
 	document.body.setAttribute('perms', perms.join(' '));
 
 	var have_write = has(perms, "write"),
-		have_read = has(perms, "read"),
 		de = document.documentElement,
 		tds = QSA('#u2conf td');
 
@@ -8977,6 +8983,13 @@ var msel = (function () {
 		if (this.vp !== get_evpath()) {
 			sf.textContent = 'aborted due to location change';
 			return;
+		}
+
+		if (this.status == 405) {
+			tb.value = '';
+			sf.textContent = 'already existed';
+			treectl.goto(this.vp + uricom_enc(this.dn) + '/', true);
+			return tree_scrollto();
 		}
 
 		xhrchk(this, L.fd_xe1, L.fd_xe2);
@@ -10030,7 +10043,7 @@ function reload_browser() {
 		if (e.target.closest('#widget,#ops,.opview,.doc')) return;
 
 		if (e.target.closest('#gfiles'))
-			ebi('gfiles').style.userSelect = "none"
+			ebi('gfiles').style.userSelect = "none";
 
 		var pos = getpp(e);
 		startx = pos.x;
@@ -10071,7 +10084,9 @@ function reload_browser() {
 			return;
 		}
 		if (!dragging && dist > mvthresh && !window.getSelection().toString()) {
-			if (fwrap = e.target.closest('#wrap')) 
+			if (e.target instanceof Element)
+				fwrap = e.target.closest('#wrap');
+			if (fwrap) 
 				fwrap.style.userSelect = 'none';
 			else return;
 			start_drag();
@@ -10115,7 +10130,8 @@ function reload_browser() {
 
 		window.addEventListener('dragstart', function(e) {
 			if (treectl.dsel && (is_selma || dragging)) {
-				e.preventDefault();
+				if (!QS('body.bbox-open'))
+					ev(e);
 			}
 		});
 	}

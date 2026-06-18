@@ -326,7 +326,14 @@ except:
     BITNESS = struct.calcsize("P") * 8
 
 
-CAN_SIGMASK = not (ANYWIN or PY2 or GRAAL)
+try:
+    if ANYWIN or PY2 or GRAAL or not hasattr(signal, "pthread_sigmask"):
+        raise Exception()
+    BLOCK_SIGS = [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]
+    CAN_SIGMASK = True
+except:
+    BLOCK_SIGS = []
+    CAN_SIGMASK = False
 
 
 RE_ANSI = re.compile("\033\\[[^mK]*[mK]")
@@ -516,7 +523,7 @@ image heics=heic-sequence heifs=heif-sequence hdr=vnd.radiance svg=svg+xml
 image arw=x-sony-arw cr2=x-canon-cr2 crw=x-canon-crw dcr=x-kodak-dcr dng=x-adobe-dng erf=x-epson-erf
 image k25=x-kodak-k25 kdc=x-kodak-kdc mrw=x-minolta-mrw nef=x-nikon-nef orf=x-olympus-orf
 image pef=x-pentax-pef raf=x-fuji-raf raw=x-panasonic-raw sr2=x-sony-sr2 srf=x-sony-srf x3f=x-sigma-x3f
-audio caf=x-caf mp3=mpeg m4a=mp4 m4b=mp4 m4r=mp4 mid=midi mpc=musepack aif=aiff au=basic qcp=qcelp
+audio caf=x-caf mp3=mpeg m4a=mp4 m4b=mp4 m4r=mp4 mid=midi mka=x-matroska mpc=musepack aif=aiff au=basic qcp=qcelp
 video mkv=x-matroska mov=quicktime avi=x-msvideo m4v=x-m4v ts=mp2t
 video asf=x-ms-asf flv=x-flv 3gp=3gpp 3g2=3gpp2 rmvb=vnd.rn-realmedia-vbr
 font ttc=collection
@@ -648,6 +655,14 @@ if EXE:
                 break
         except:
             pass
+
+
+try:
+    if PY2 or ANYWIN:
+        raise Exception()
+    HAVE_BWRAP = shutil.which("bwrap")
+except:
+    HAVE_BWRAP = ""
 
 
 def py_desc() -> str:
@@ -832,10 +847,8 @@ class Daemon(threading.Thread):
             self.start()
 
     def run(self):
-        if CAN_SIGMASK:
-            signal.pthread_sigmask(
-                signal.SIG_BLOCK, [signal.SIGINT, signal.SIGTERM, signal.SIGUSR1]
-            )
+        if BLOCK_SIGS:
+            signal.pthread_sigmask(signal.SIG_BLOCK, BLOCK_SIGS)
 
         self.fun(*self.a, **self.ka)
 
@@ -1635,6 +1648,16 @@ def expand_osenv_cs(txt) -> str:
     raise Exception(t)
 
 
+def signame2int(txt: str) -> int:
+    try:
+        return int(txt)
+    except:
+        txt = txt.upper()
+        if not txt.startswith("SIG"):
+            txt = "SIG" + txt
+        return int(getattr(signal, txt))
+
+
 def rice_tid() -> str:
     tid = threading.current_thread().ident
     c = sunpack(b"B" * 5, spack(b">Q", tid)[-5:])
@@ -1768,9 +1791,7 @@ def log_thrs(log: Callable[[str, str, int], None], ival: float, name: str) -> No
 
 
 def _sigblock():
-    signal.pthread_sigmask(
-        signal.SIG_BLOCK, [signal.SIGINT, signal.SIGTERM, signal.SIGUSR1]
-    )
+    signal.pthread_sigmask(signal.SIG_BLOCK, BLOCK_SIGS)
 
 
 sigblock = _sigblock if CAN_SIGMASK else noop
@@ -2664,6 +2685,10 @@ def vjoin(rd: str, fn: str) -> str:
         return rd + "/" + fn
     else:
         return rd or fn
+
+
+def vjoins(*a: str) -> str:
+    return "/".join([x for x in a if x])
 
 
 # url-join
