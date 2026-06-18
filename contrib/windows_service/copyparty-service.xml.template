@@ -1,0 +1,20 @@
+<service>
+  <id>{{SERVICE_ID}}</id>
+  <name>{{DISPLAY_NAME}}</name>
+  <description>{{DESCRIPTION}}</description>
+  <executable>{{EXECUTABLE}}</executable>
+  <arguments>{{ARGUMENTS}}</arguments>
+  <workingdirectory>{{WORKING_DIRECTORY}}</workingdirectory>
+  <startmode>{{START_MODE}}</startmode>
+{{DELAYED_AUTO_START}}
+{{SERVICE_ACCOUNT}}
+  <stoptimeout>30 sec</stoptimeout>
+  <stopparentprocessfirst>true</stopparentprocessfirst>
+  <logpath>{{LOG_DIRECTORY}}</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+</service>

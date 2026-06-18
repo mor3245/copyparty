@@ -87,6 +87,10 @@ or if you wanna use `copyparty-sfx.py` instead of the exe (understandable),
 
 ## run it as a service
 
+for a repeatable installation with path validation, automatic startup, failure recovery, rotating logs, clean uninstallation, and a least-privilege service account, use the PowerShell integration or launch-wizard.cmd in [`contrib/windows_service/`](../../contrib/windows_service/)
+
+the commands below remain available as a minimal manual NSSM alternative
+
 to run this as a service you need [NSSM](https://nssm.cc/ci/nssm-2.24-101-g897c7ad.zip), so put the exe somewhere in your PATH
 
 then either do this for `copyparty.exe`:

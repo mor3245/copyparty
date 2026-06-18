@@ -65,6 +65,7 @@ init-scripts to start copyparty as a service
 * [`rc/copyparty`](rc/copyparty) runs sfx normally on freebsd, create a `copyparty` user
 * [`systemd/prisonparty.service`](systemd/prisonparty.service) runs the sfx in a chroot
 * [`openrc/copyparty`](openrc/copyparty)
+* [`windows_service/`](windows_service/) installs the exe or Python package as a Windows service using WinSW
 
 # Reverse-proxy
 copyparty supports running behind another webserver
