@@ -1309,6 +1309,13 @@ html.y #widget.open {
 	text-align: center;
 	border-radius: .3em;
 }
+#pctl a.on {
+	background: var(--btn-1-bg) !important;
+	color: var(--btn-1-fg) !important;
+	text-shadow: none !important;
+	box-shadow: var(--btn-1-bs) !important;
+	border-bottom: var(--btn-1-bb) !important;
+}
 #pvol {
 	position: absolute;
 	top: .7em;
@@ -1316,7 +1323,7 @@ html.y #widget.open {
 	height: 1.6em;
 	border-radius: 9em;
 	max-width: 12em;
-	width: calc(100% - 10.5em);
+	width: calc(100% - 13.5em);
 	background: rgba(0,0,0,0.2);
 }
 #widget.cmp {
@@ -3244,8 +3251,8 @@ html.d #treepar {
 @media (min-width: 70em) {
 	#barpos,
 	#barbuf {
-		width: calc(100% - 21em);
-		left: 9.8em;
+		width: calc(100% - 23.5em);
+		left: 12.3em;
 		top: .7em;
 		height: 1.6em;
 		bottom: auto;

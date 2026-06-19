@@ -844,7 +844,7 @@ ebi('widget').innerHTML = (
 	'	href="#" id="wtico">♫</a>' +
 	'</div>' +
 	'<div id="widgeti">' +
-	'	<div id="pctl"><a href="#" id="bprev" tt="' + L.wt_prev + '">⏮</a><a href="#" id="bplay" tt="' + L.wt_play + '">▶</a><a href="#" id="bnext" tt="' + L.wt_next + '">⏭</a></div>' +
+	'	<div id="pctl"><a href="#" id="bprev" tt="' + L.wt_prev + '">⏮</a><a href="#" id="bplay" tt="' + L.wt_play + '">▶</a><a href="#" id="bnext" tt="' + L.wt_next + '">⏭</a><a href="#" id="au_shuf_w" tt="' + L.mt_shuf + '</a></div>' +
 	'	<canvas id="pvol" width="288" height="38"></canvas>' +
 	'	<canvas id="barpos"></canvas>' +
 	'	<canvas id="barbuf"></canvas>' +
@@ -1410,9 +1410,15 @@ var mpl = (function () {
 		if (mp.au)
 			mp.au.loop = v;
 	});
-	bcfg_bind(r, 'shuf', 'au_shuf', false, function () {
+	bcfg_bind(r, 'shuf', 'au_shuf', false, function (v) {
 		mp.read_order();  // don't bind
+		var el_w = ebi('au_shuf_w');
+		if (el_w)
+			clmod(el_w, 'on', v);
 	});
+	var el_w = ebi('au_shuf_w');
+	if (el_w)
+		clmod(el_w, 'on', r.shuf);
 	bcfg_bind(r, 'aplay', 'au_aplay', true);
 	bcfg_bind(r, 'preload', 'au_preload', true);
 	bcfg_bind(r, 'prescan', 'au_prescan', true);
@@ -2512,6 +2518,11 @@ function prev_song(e) {
 	}
 	return song_skip(-1);
 }
+function shuffle(e) {
+	ev(e);
+
+	ebi('au_shuf').click();
+}
 function dl_song() {
 	if (!mp || !mp.au) {
 		var o = QSA('#files a[id]');
@@ -2576,6 +2587,7 @@ function mpause(e) {
 	ebi('bplay').onclick = playpause;
 	ebi('bprev').onclick = prev_song;
 	ebi('bnext').onclick = next_song;
+	ebi('au_shuf_w').onclick = shuffle;
 
 	var bar = ebi('barpos');
 
