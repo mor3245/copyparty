@@ -129,6 +129,7 @@ if (1)
 		"ot_msg": "msg: send a message to the server log",
 		"ot_mp": "media player options",
 		"ot_cfg": "configuration options",
+		"ot_more": "more options",
 		"ot_u2i": 'up2k: upload files (if you have write-access) or toggle into the search-mode to see if they exist somewhere on the server$N$Nuploads are resumable, multithreaded, and file timestamps are preserved, but it uses more CPU than [🎈]&nbsp; (the basic uploader)<br /><br />during uploads, this icon becomes a progress indicator!',
 		"ot_u2w": 'up2k: upload files with resume support (close your browser and drop the same files in later)$N$Nmultithreaded, and file timestamps are preserved, but it uses more CPU than [🎈]&nbsp; (the basic uploader)<br /><br />during uploads, this icon becomes a progress indicator!',
 		"ot_noie": 'Please use Chrome / Firefox / Edge',
@@ -804,12 +805,15 @@ ebi('ops').innerHTML = (
 	'<a href="#" id="opa_srch" data-perm="read" data-dep="idx" data-dest="search" tt="' + L.ot_search + '">🔎</a>' +
 	(have_del ? '<a href="#" id="opa_del" data-perm="write" data-dest="unpost" tt="' + L.ot_unpost + '">🧯</a>' : '') +
 	'<a href="#" id="opa_up" data-dest="up2k">🚀</a>' +
+	'<span id="opg_more">' +
 	'<a href="#" id="opa_bup" data-perm="write" data-dest="bup" tt="' + L.ot_bup + '">🎈</a>' +
 	'<a href="#" id="opa_mkd" data-perm="write" data-dest="mkdir" tt="' + L.ot_mkdir + '">📂</a>' +
 	'<a href="#" id="opa_md" data-perm="read write" data-dest="new_md" tt="' + L.ot_md + '">📝</a>' +
 	'<a href="#" id="opa_msg" data-dest="msg" tt="' + L.ot_msg + '">📟</a>' +
 	'<a href="#" id="opa_auc" data-dest="player" tt="' + L.ot_mp + '">🎺</a>' +
+	'</span>' +
 	'<a href="#" id="opa_cfg" data-dest="cfg" tt="' + L.ot_cfg + '">⚙️</a>' +
+	'<a href="#" id="opa_more" tt="' + L.ot_more + '">⋯</a>' +
 	(IE ? '<span id="noie">' + L.ot_noie + '</span>' : '') +
 	'<div id="opdesc"></div>'
 );
@@ -1132,7 +1136,7 @@ ebi('rcm').innerHTML = (
 );
 
 (function () {
-	var ops = QSA('#ops>a');
+	var ops = QSA('#ops a');
 	for (var a = 0; a < ops.length; a++) {
 		ops[a].onclick = opclick;
 		var v = ops[a].getAttribute('data-dest');
@@ -1140,6 +1144,16 @@ ebi('rcm').innerHTML = (
 			ops[a].href = '#v=' + v;
 	}
 })();
+
+// responsive toolbar: ⋯ overflow menu (collapses secondary buttons on narrow screens)
+ebi('opa_more').onclick = function (e) { ev(e); clmod(ebi('ops'), 'more-open', 't'); };
+document.addEventListener('click', function (e) {
+	var o = ebi('ops');
+	if (o && clgot(o, 'more-open') && !o.contains(e.target)) clmod(o, 'more-open', 0);
+}, true);  // capture phase, because ev() stopPropagation
+document.addEventListener('keydown', function (e) {
+	if (e.code == 'Escape' || e.key == 'Escape') clmod(ebi('ops'), 'more-open', 0);
+}, true);
 
 
 function opclick(e) {
@@ -1163,16 +1177,18 @@ function opclick(e) {
 
 
 function goto(dest) {
+	clmod(ebi('ops'), 'more-open', 0);
+
 	var obj = QSA('.opview.act');
 	for (var a = obj.length - 1; a >= 0; a--)
 		clmod(obj[a], 'act');
 
-	obj = QSA('#ops>a');
+	obj = QSA('#ops a');
 	for (var a = obj.length - 1; a >= 0; a--)
 		clmod(obj[a], 'act');
 
 	if (dest) {
-		var lnk = QS('#ops>a[data-dest=' + dest + ']'),
+		var lnk = QS('#ops a[data-dest=' + dest + ']'),
 			nps = lnk.getAttribute('data-perm');
 
 		nps = nps && nps.length ? nps.split(' ') : [];
@@ -8059,7 +8075,7 @@ function apply_perms(res) {
 			'<form id="flogout" method="post" enctype="multipart/form-data"><input type="hidden" name="act" value="logout" /><input id="blogout" type="submit" value="' + L.logout + acct + '"></form>' :
 			'<a href="' + dst + '">' + L.login + '</a>');
 
-	var o = QSA('#ops>a[data-perm]');
+	var o = QSA('#ops a[data-perm]');
 	for (var a = 0; a < o.length; a++) {
 		var display = '';
 		var needed = o[a].getAttribute('data-perm').split(' ');
@@ -8080,7 +8096,7 @@ function apply_perms(res) {
 	if (in_shr)
 		ebi('opa_srch').style.display = 'none';
 
-	var act = QS('#ops>a.act');
+	var act = QS('#ops a.act');
 	if (act && act.style.display === 'none')
 		goto();
 
