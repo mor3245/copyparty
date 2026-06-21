@@ -1388,6 +1388,13 @@ html.y #ops svg circle {
 #ops {
 	padding: .3em .6em;
 	white-space: nowrap;
+	position: relative;
+}
+#opg_more {
+	display: inline;
+}
+#opa_more {
+	display: none;
 }
 #noie {
 	color: #b60;
@@ -3278,9 +3285,37 @@ html.d #treepar {
 	}
 }
 @media (max-width: 35em) {
-	#ops>a[data-dest="new_md"],
-	#ops>a[data-dest="msg"] {
+	#opa_more {
+		display: inline-block;
+	}
+	#opg_more {
 		display: none;
+	}
+	#ops.more-open #opg_more {
+		display: flex;
+		flex-direction: column;
+		position: absolute;
+		top: 100%;
+		right: .4em;
+		z-index: 800;
+		padding: .2em;
+		background: var(--bg-u2);
+		border: 1px solid var(--bg-u5);
+		border-radius: .3em;
+		box-shadow: 0 .2em .5em rgba(0,0,0,.4);
+	}
+	#ops.more-open #opg_more a {
+		display: block;
+		min-width: 2.2em;
+		padding: .4em .6em;
+		text-align: center;
+		border-radius: .2em;
+	}
+	#ops a {
+		display: inline-block;
+		min-width: 1.2em;
+		padding: .45em .4em;
+		text-align: center;
 	}
 	#op_mkdir.act+div,
 	#op_mkdir.act+div+div {
