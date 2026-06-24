@@ -120,6 +120,7 @@ web/tl/hun.js
 web/tl/ita.js
 web/tl/jpn.js
 web/tl/kor.js
+web/tl/ms.js
 web/tl/nld.js
 web/tl/nno.js
 web/tl/nor.js
