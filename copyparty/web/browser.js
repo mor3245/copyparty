@@ -1432,6 +1432,11 @@ var mpl = (function () {
 	});
 	bcfg_bind(r, 'shuf', 'au_shuf', false, function (v) {
 		mp.read_order();  // don't bind
+		if (v && mp.order.length) {
+			mpo.initial_order = mp.order.slice();
+			mpo.initial_tracks = Object.assign({}, mp.tracks);
+			mpo.initial_evp = get_evpath();
+		}
 		var el_w = ebi('au_shuf_w');
 		if (el_w)
 			clmod(el_w, 'on', v);
@@ -2478,10 +2483,12 @@ function seek_au_sec(seek) {
 
 
 function song_skip(n, dirskip) {
-	var tid = mp.au && mp.au.evp == get_evpath() ? mp.au.tid : null,
-		ofs = tid ? mp.order.indexOf(tid) : -1;
+	var order = (mpl.shuf && mpo.initial_order) ? mpo.initial_order : mp.order;
+	var active_evp = (mpl.shuf && mpo.initial_evp) ? mpo.initial_evp : get_evpath();
+	var tid = mp.au && mp.au.evp == active_evp ? mp.au.tid : null,
+		ofs = tid ? order.indexOf(tid) : -1;
 
-	if (dirskip && ofs + 1 && ofs > mp.order.length - 2) {
+	if (dirskip && ofs + 1 && ofs > order.length - 2) {
 		toast.inf(10, L.mm_nof);
 		console.log("mm_nof1");
 		mpl.traversals = 0;
@@ -2491,7 +2498,7 @@ function song_skip(n, dirskip) {
 	if (tid && !dirskip)
 		play(ofs + n);
 	else
-		play(mp.order[n == -1 ? mp.order.length - 1 : 0]);
+		play(order[n == -1 ? order.length - 1 : 0]);
 }
 function next_song(e) {
 	ev(e);
@@ -2499,14 +2506,17 @@ function next_song(e) {
 		treectl.ls_cb = next_song;
 		return;
 	}
-	if (mp.order.length) {
+	var order = (mpl.shuf && mpo.initial_order) ? mpo.initial_order : mp.order;
+	if (order.length) {
 		var dirskip = mpl.traversals;
 		mpl.traversals = 0;
 		return song_skip(1, dirskip);
 	}
-	if (mpl.traversals++ < 5) {
-		treectl.ls_cb = next_song;
-		return tree_neigh(1);
+	if (!mpl.shuf) {
+		if (mpl.traversals++ < 5) {
+			treectl.ls_cb = next_song;
+			return tree_neigh(1);
+		}
 	}
 	toast.inf(10, L.mm_nof);
 	console.log("mm_nof2");
@@ -2514,13 +2524,16 @@ function next_song(e) {
 }
 function last_song(e) {
 	ev(e);
-	if (mp.order.length) {
+	var order = (mpl.shuf && mpo.initial_order) ? mpo.initial_order : mp.order;
+	if (order.length) {
 		mpl.traversals = 0;
 		return song_skip(-1, true);
 	}
-	if (mpl.traversals++ < 5) {
-		treectl.ls_cb = last_song;
-		return tree_neigh(-1);
+	if (!mpl.shuf) {
+		if (mpl.traversals++ < 5) {
+			treectl.ls_cb = last_song;
+			return tree_neigh(-1);
+		}
 	}
 	toast.inf(10, L.mm_nof);
 	console.log("mm_nof2");
@@ -3266,6 +3279,15 @@ function play(tid, is_ev, seek) {
 	if (mp.order.length == 0)
 		return console.log('no audio found wait what');
 
+	if (is_ev || (tid + '').indexOf('f-') === 0) {
+		mpo.initial_order = mp.order.slice();
+		mpo.initial_tracks = Object.assign({}, mp.tracks);
+		mpo.initial_evp = get_evpath();
+	}
+
+	var order = (mpl.shuf && mpo.initial_order) ? mpo.initial_order : mp.order;
+	var tracks = (mpl.shuf && mpo.initial_tracks) ? mpo.initial_tracks : mp.tracks;
+
 	if (crashed)
 		return;
 
@@ -3275,16 +3297,25 @@ function play(tid, is_ev, seek) {
 
 	var tn = tid;
 	if ((tn + '').indexOf('f-') === 0) {
-		tn = mp.order.indexOf(tn);
+		tn = order.indexOf(tn);
 		if (tn < 0)
 			return toast.warn(10, L.mm_hnf);
 	}
 
-	if (tn >= mp.order.length) {
+	if (tn >= order.length) {
 		if (treectl.trunc)
 			return treectl.showmore(99999, next_song);
 
-		if (mpl.pb_mode == 'loop' || ebi('unsearch')) {
+		if (mpl.shuf) {
+			for (var a = order.length - 1; a > 0; a--) {
+				var b = Math.floor(Math.random() * (a + 1)),
+					c = order[a];
+				order[a] = order[b];
+				order[b] = c;
+			}
+			tn = 0;
+		}
+		else if (mpl.pb_mode == 'loop' || ebi('unsearch')) {
 			tn = 0;
 		}
 		else if (mpl.pb_mode == 'next') {
@@ -3295,8 +3326,17 @@ function play(tid, is_ev, seek) {
 	}
 
 	if (tn < 0) {
-		if (mpl.pb_mode == 'loop') {
-			tn = mp.order.length - 1;
+		if (mpl.shuf) {
+			for (var a = order.length - 1; a > 0; a--) {
+				var b = Math.floor(Math.random() * (a + 1)),
+					c = order[a];
+				order[a] = order[b];
+				order[b] = c;
+			}
+			tn = order.length - 1;
+		}
+		else if (mpl.pb_mode == 'loop') {
+			tn = order.length - 1;
 		}
 		else if (mpl.pb_mode == 'next') {
 			treectl.ls_cb = last_song;
@@ -3305,7 +3345,7 @@ function play(tid, is_ev, seek) {
 		else return;
 	}
 
-	tid = mp.order[tn];
+	tid = order[tn];
 
 	if (mp.au) {
 		mp.au.pause();
@@ -3321,7 +3361,7 @@ function play(tid, is_ev, seek) {
 	}
 	mp.init_fau();
 
-	var url = addq(mpl.acode(mp.tracks[tid]), 'cache=987&_=' + ACB);
+	var url = addq(mpl.acode(tracks[tid]), 'cache=987&_=' + ACB);
 
 	if (mp.au.rsrc == url)
 		mp.au.currentTime = 0;
@@ -3341,7 +3381,7 @@ function play(tid, is_ev, seek) {
 		mp.au.src = mp.au.rsrc = url;
 	}
 
-	mp.au.osrc = mp.tracks[tid];
+	mp.au.osrc = tracks[tid];
 	afilt.apply();
 
 	setTimeout(function () {
@@ -3351,7 +3391,7 @@ function play(tid, is_ev, seek) {
 	mp.au.ded = 0;
 	mp.au.tid = tid;
 	mp.au.pt0 = Date.now();
-	mp.au.evp = get_evpath();
+	mp.au.evp = mpo.initial_evp || get_evpath();
 	mp.au.volume = mp.expvol(mp.vol);
 	var trs = QSA('#files tr.play');
 	for (var a = 0, aa = trs.length; a < aa; a++)
